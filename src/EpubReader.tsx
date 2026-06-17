@@ -261,16 +261,21 @@ export const EpubReader = ({ source, title, leaf, onControlsReady }: {
           getRendition={(rendition: Rendition) => {
             renditionRef.current = rendition;
 
-            // Fix: epubjs Url constructor picks up Obsidian origin when the URL
-            // has no protocol. We use epub-folder:/// in createPackageSource to
-            // prevent origin injection, but for non-standard schemes the origin
-            // is the string "null", so resolved paths come back as "null/path".
-            // Clean these so Path.relative() and replaceBase() work correctly.
+            // Fix: epubjs Url constructor picks up Obsidian's window.location.href
+            // as base and injects the origin into every resolved path. Two cases:
+            //   1. Origin has :// (e.g. "app://obsidian.md"): Path() strips it,
+            //      but Path.relative() returns ://-URLs unchanged → substitution fails.
+            //   2. Origin is "null" (non-standard scheme): paths get "null/" prefix
+            //      which Path treats as a regular directory segment, compounding on
+            //      each resolve. replaceBase() also creates malformed base URLs.
+            // Clean both so Path.relative() and replaceBase() work correctly.
             const book = (rendition as any).book;
             if (book) {
               const cleanPath = (p: string): string => {
                 if (typeof p === 'string') {
-                  return p.replace(/^null\//, '/');
+                  return p
+                    .replace(/^[a-z][a-z0-9+\-.]*:\/\/[^/]+\//, '/')
+                    .replace(/^(null\/)+/, '/');
                 }
                 return p;
               };
