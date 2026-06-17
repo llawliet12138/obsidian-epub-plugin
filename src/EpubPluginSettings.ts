@@ -2,14 +2,12 @@ import { App, PluginSettingTab, Setting, TFolder, Vault } from "obsidian";
 import EpubPlugin from "./EpubPlugin";
 
 export interface EpubPluginSettings {
-	scrolledView: boolean;
 	notePath: string;
 	useSameFolder: boolean;
 	tags: string;
 }
 
 export const DEFAULT_SETTINGS: EpubPluginSettings = {
-	scrolledView: false,
 	notePath: '/',
 	useSameFolder: true,
 	tags: 'notes/booknotes'
@@ -27,16 +25,6 @@ export class EpubSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 		containerEl.createEl('h2', { text: 'EPUB Settings' });
-
-		new Setting(containerEl)
-			.setName("Scrolled View")
-			.setDesc("This enables seamless scrolling between pages.")
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.scrolledView)
-				.onChange(async (value) => {
-					this.plugin.settings.scrolledView = value;
-					await this.plugin.saveSettings();
-				}));
 
 		new Setting(containerEl)
 			.setName("Same Folder")

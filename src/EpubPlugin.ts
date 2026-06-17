@@ -1,4 +1,4 @@
-import { addIcon, Plugin, WorkspaceLeaf } from 'obsidian';
+import { addIcon, Notice, Plugin, TFolder, WorkspaceLeaf } from 'obsidian';
 import { EpubPluginSettings, EpubSettingTab, DEFAULT_SETTINGS } from './EpubPluginSettings';
 import { EpubView, EPUB_FILE_EXTENSION, ICON_EPUB, VIEW_TYPE_EPUB } from './EpubView';
 
@@ -20,6 +20,69 @@ export default class EpubPlugin extends Plugin {
 			return new EpubView(leaf, this.settings);
 		});
 
+		this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
+			if (!(file instanceof TFolder) || !file.name.toLowerCase().endsWith('.epub')) {
+				return;
+			}
+
+			menu.addItem((item) => {
+				item
+					.setTitle('Open as EPUB')
+					.setIcon(ICON_EPUB)
+					.onClick(() => {
+						this.openPackageEpub(file);
+					});
+			});
+		}));
+
+		this.addCommand({
+			id: 'epub-next-page',
+			name: 'EPUB: Next page',
+			callback: () => this.getActiveEpubView()?.nextPage()
+		});
+
+		this.addCommand({
+			id: 'epub-previous-page',
+			name: 'EPUB: Previous page',
+			callback: () => this.getActiveEpubView()?.previousPage()
+		});
+
+		this.addCommand({
+			id: 'epub-increase-font-size',
+			name: 'EPUB: Increase font size',
+			callback: () => this.getActiveEpubView()?.increaseFontSize()
+		});
+
+		this.addCommand({
+			id: 'epub-decrease-font-size',
+			name: 'EPUB: Decrease font size',
+			callback: () => this.getActiveEpubView()?.decreaseFontSize()
+		});
+
+		this.addCommand({
+			id: 'epub-reset-font-size',
+			name: 'EPUB: Reset font size',
+			callback: () => this.getActiveEpubView()?.resetFontSize()
+		});
+
+		this.addCommand({
+			id: 'epub-cycle-font-family',
+			name: 'EPUB: Cycle font family',
+			callback: () => this.getActiveEpubView()?.cycleFontFamily()
+		});
+
+		this.addCommand({
+			id: 'epub-open-table-of-contents',
+			name: 'EPUB: Open table of contents',
+			callback: () => this.getActiveEpubView()?.openTableOfContents()
+		});
+
+		this.addCommand({
+			id: 'epub-toggle-reader-controls',
+			name: 'EPUB: Toggle reader controls',
+			callback: () => this.getActiveEpubView()?.toggleReaderControls()
+		});
+
 		try {
 			this.registerExtensions([EPUB_FILE_EXTENSION], VIEW_TYPE_EPUB);
 		} catch (error) {
@@ -30,6 +93,28 @@ export default class EpubPlugin extends Plugin {
 	}
 
 	onunload() {
+	}
+
+	getActiveEpubView(): EpubView | null {
+		return this.app.workspace.getActiveViewOfType(EpubView);
+	}
+
+	async openPackageEpub(folder: TFolder): Promise<void> {
+		try {
+			await this.app.vault.adapter.read(`${folder.path}/META-INF/container.xml`);
+		} catch (error) {
+			new Notice(`${folder.name} is not a valid EPUB package.`);
+			return;
+		}
+
+		const leaf = this.app.workspace.getLeaf(false);
+		await leaf.setViewState({
+			type: VIEW_TYPE_EPUB,
+			state: {
+				packagePath: folder.path,
+			},
+			active: true,
+		});
 	}
 
 	async loadSettings() {
