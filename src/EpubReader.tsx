@@ -256,6 +256,34 @@ export const EpubReader = ({ source, title, leaf, onControlsReady }: {
           swipeable={false}
           getRendition={(rendition: Rendition) => {
             renditionRef.current = rendition;
+
+            // Fix: epubjs Url constructor picks up Obsidian's window.location.origin
+            // (e.g. "app://obsidian.md") and injects it into all resolved paths.
+            // This breaks Path.relative() (which returns protocol-URLs unchanged)
+            // and replaceBase() (which creates malformed base URLs for null-origin).
+            // Patch the resource resolver and spine URLs to stay as clean vault paths.
+            const book = (rendition as any).book;
+            if (book) {
+              const cleanPath = (p: string): string => {
+                if (typeof p === 'string') {
+                  return p.replace(/^[a-z][a-z0-9+\-.]*:\/\/[^/]+\//, '/').replace(/^null\//, '/');
+                }
+                return p;
+              };
+
+              if (book.resources?.settings) {
+                const origResolver = book.resources.settings.resolver;
+                book.resources.settings.resolver = (path: string) => cleanPath(origResolver(path));
+              }
+
+              if (book.spine?.items) {
+                book.spine.items.forEach((item: any) => {
+                  if (item.url) item.url = cleanPath(item.url);
+                  if (item.canonical) item.canonical = cleanPath(item.canonical);
+                });
+              }
+            }
+
             rendition.flow("paginated");
             rendition.spread("none");
             rendition.hooks.content.register((content: Contents) => {
