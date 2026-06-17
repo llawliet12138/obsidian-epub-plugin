@@ -230,8 +230,13 @@ Date: ${moment().toLocaleString()}
 }
 
 function createPackageSource(packagePath: string, requestMethod: (url: string, type?: string) => Promise<Blob | string | Document | XMLDocument | ArrayBuffer | object>): EpubSource {
+  // Use a custom protocol prefix so epubjs's Url constructor sees "://" and
+  // treats the URL as absolute. This prevents it from resolving against
+  // window.location.href (Obsidian's app:// origin), which would inject the
+  // origin into every resolved path and break Path.relative() + replaceBase().
+  // Triple-slash (:///) ensures an empty hostname so the pathname is the full path.
   return {
-    url: `${normalizePath(packagePath)}/`,
+    url: `epub-folder:///${normalizePath(packagePath)}/`,
     epubInitOptions: {
       openAs: 'directory',
       requestMethod: requestMethod as any,
@@ -244,7 +249,13 @@ function normalizePackageResourcePath(packagePath: string, url: string): string 
   const root = normalizePath(packagePath);
   const rootWithSlash = `${root}/`;
   const decodedUrl = decodeURIComponent(url).split(/[?#]/)[0];
-  const normalizedUrl = normalizePath(decodedUrl).replace(/^\/+/, '');
+  // Strip any protocol+origin prefix (e.g. "null/", "epub-folder:///",
+  // "app://obsidian.md/") before running through Obsidian's normalizePath,
+  // which may mangle "://" sequences.
+  const cleanUrl = decodedUrl
+    .replace(/^[a-z][a-z0-9+\-.]*:\/\/[^/]*\//, '/')
+    .replace(/^null\//, '/');
+  const normalizedUrl = normalizePath(cleanUrl).replace(/^\/+/, '');
   const rootIndex = normalizedUrl.indexOf(rootWithSlash);
 
   if (rootIndex >= 0) {

@@ -261,16 +261,16 @@ export const EpubReader = ({ source, title, leaf, onControlsReady }: {
           getRendition={(rendition: Rendition) => {
             renditionRef.current = rendition;
 
-            // Fix: epubjs Url constructor picks up Obsidian's window.location.origin
-            // (e.g. "app://obsidian.md") and injects it into all resolved paths.
-            // This breaks Path.relative() (which returns protocol-URLs unchanged)
-            // and replaceBase() (which creates malformed base URLs for null-origin).
-            // Patch the resource resolver and spine URLs to stay as clean vault paths.
+            // Fix: epubjs Url constructor picks up Obsidian origin when the URL
+            // has no protocol. We use epub-folder:/// in createPackageSource to
+            // prevent origin injection, but for non-standard schemes the origin
+            // is the string "null", so resolved paths come back as "null/path".
+            // Clean these so Path.relative() and replaceBase() work correctly.
             const book = (rendition as any).book;
             if (book) {
               const cleanPath = (p: string): string => {
                 if (typeof p === 'string') {
-                  return p.replace(/^[a-z][a-z0-9+\-.]*:\/\/[^/]+\//, '/').replace(/^null\//, '/');
+                  return p.replace(/^null\//, '/');
                 }
                 return p;
               };
