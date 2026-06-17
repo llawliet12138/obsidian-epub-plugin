@@ -229,15 +229,19 @@ export const EpubReader = ({ source, title, leaf, onControlsReady }: {
     event.preventDefault();
 
     const now = Date.now();
-    if (now - wheelTimestampRef.current < 500) return;
+    if (now - wheelTimestampRef.current < 300) return;
 
-    const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY);
-    if (!horizontal) return;
+    // Support both vertical (common) and horizontal scroll for page turning
+    const absX = Math.abs(event.deltaX);
+    const absY = Math.abs(event.deltaY);
+    const delta = absX > absY ? event.deltaX : event.deltaY;
+
+    if (Math.abs(delta) < 30) return;
 
     wheelTimestampRef.current = now;
-    if (event.deltaX > 0) {
+    if (delta > 0) {
       nextPage();
-    } else if (event.deltaX < 0) {
+    } else {
       previousPage();
     }
   }, [nextPage, previousPage]);
